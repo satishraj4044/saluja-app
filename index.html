@@ -5378,15 +5378,19 @@ const app={
             _bc.close();
         }catch(e){}
 
-        // ── Firebase sync — IMEI jaisa direct write ──
+        // ── Firebase sync — direct write (FB_STAFF_PATH window scope se) ──
         try{
-            const db = (typeof window._db !== 'undefined' && window._db) ? window._db : null;
-            if(db){
-                db.ref(FB_STAFF_PATH).set(JSON.stringify(cleanStaff))
-                  .then(()=> console.log('☁️ Staff synced to Firebase:', cleanStaff.length))
+            const _fbPath = (typeof window.FB_STAFF_PATH !== 'undefined') ? window.FB_STAFF_PATH : 'saluja_store/staffData';
+            const _fbDb = (typeof window._db !== 'undefined' && window._db) ? window._db : null;
+            if(_fbDb){
+                const _mergedForFb = this._mergeToGlobal ? this._mergeToGlobal(cleanStaff) : cleanStaff;
+                _fbDb.ref(_fbPath).set(JSON.stringify(_mergedForFb))
+                  .then(()=> console.log('☁️ Staff synced to Firebase:', _mergedForFb.length))
                   .catch(e=> console.warn('Staff Firebase sync error:', e));
+            } else {
+                console.warn('Firebase not ready — staff saved locally only');
             }
-        }catch(e){}
+        }catch(e){ console.warn('Firebase write error:', e); }
 
         // 2) IndexedDB
         try{
@@ -10342,6 +10346,7 @@ const FB_CONFIG = {
 
 /* ─── Firebase Realtime Database paths ─── */
 const FB_STAFF_PATH    = 'saluja_store/staffData';
+window.FB_STAFF_PATH   = FB_STAFF_PATH; // Global scope — save() andar bhi accessible
 const FB_ACCOUNTS_PATH = 'saluja_store/accounts';
 
 /* ─── State ─── */
