@@ -10283,7 +10283,7 @@ window.addEventListener('load', function(){
 
     // ── Fallback: normal browser download ──
     window.satishFallbackDownload = function(blob, fileName){
-        // ── KODULAR/APPINVENTOR BRIDGE ──
+        // 1. KODULAR/APPINVENTOR BRIDGE
         if(window.AppInventor && typeof window.AppInventor.setWebViewString === 'function'){
             const reader = new FileReader();
             reader.onload = function(){
@@ -10297,13 +10297,37 @@ window.addEventListener('load', function(){
                 try{
                     window.AppInventor.setWebViewString(payload);
                     if(typeof showFolderToast === 'function')
-                        showFolderToast('📤 Kodular App ko download request bheji gayi','#2563eb');
+                        showFolderToast('📥 Kodular App ko download request bheji gayi','#2563eb');
                 }catch(e){ console.error('Kodular bridge error:', e); }
             };
             reader.readAsDataURL(blob);
-            return false;
+            // We return false here to prevent double-download if bridge works,
+            // BUT we will also try Share API below for better compatibility.
         }
 
+        // 2. WEB SHARE API (Mobile Apps/Modern Browsers) - Sabse reliable tarika
+        if (navigator.canShare && navigator.share) {
+            try {
+                const file = new File([blob], fileName, { type: blob.type });
+                if (navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: fileName,
+                        text: 'Payroll PDF: ' + fileName
+                    }).catch(function(err){
+                        console.log('Share failed, using link:', err);
+                        _triggerDownloadLink(blob, fileName);
+                    });
+                    return true;
+                }
+            } catch(e) { console.error('Share error:', e); }
+        }
+
+        // 3. STANDARD DOWNLOAD LINK
+        return _triggerDownloadLink(blob, fileName);
+    };
+
+    function _triggerDownloadLink(blob, fileName) {
         try{
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
