@@ -4796,11 +4796,7 @@ async function downloadDateRangeBackup(){
         if(typeof window.satishSaveFile === 'function'){
             window.satishSaveFile(blob, fileName);
         } else {
-            const url = URL.createObjectURL(blob);
-            const a   = document.createElement('a');
-            a.href = url; a.download = fileName;
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a); URL.revokeObjectURL(url);
+            satishFallbackDownload(blob, fileName);
         }
         closeDateRangeBackupModal();
         if(typeof app._showToast === 'function') app._showToast('📅 Date Range Backup downloaded!','#059669');
@@ -5657,11 +5653,7 @@ const app={
                     else this._showToast('📁 Encrypted Backup SATISH KUMAR folder mein save hua!','#059669');
                 });
             } else {
-                const url = URL.createObjectURL(blob);
-                const a   = document.createElement('a');
-                a.href = url; a.download = fileName;
-                document.body.appendChild(a); a.click();
-                document.body.removeChild(a); URL.revokeObjectURL(url);
+                satishFallbackDownload(blob, fileName);
                 this._showToast('🔒 Encrypted Backup downloaded!','#059669');
             }
         }catch(e){ alert('Backup export failed: '+e.message); }
@@ -6537,12 +6529,7 @@ tr:nth-child(even){background:#faf8ff;}
         if(typeof window.satishSaveFile === 'function'){
             window.satishSaveFile(_pBlob, _pName);
         } else {
-            const _pUrl = URL.createObjectURL(_pBlob);
-            const _pa = document.createElement('a');
-            _pa.href = _pUrl; _pa.download = _pName;
-            document.body.appendChild(_pa); _pa.click();
-            document.body.removeChild(_pa);
-            setTimeout(()=>URL.revokeObjectURL(_pUrl), 1000);
+            satishFallbackDownload(_pBlob, _pName);
         }
     },
 
@@ -10295,7 +10282,28 @@ window.addEventListener('load', function(){
     };
 
     // ── Fallback: normal browser download ──
-    function satishFallbackDownload(blob, fileName){
+    window.satishFallbackDownload = function(blob, fileName){
+        // ── KODULAR/APPINVENTOR BRIDGE ──
+        if(window.AppInventor && typeof window.AppInventor.setWebViewString === 'function'){
+            const reader = new FileReader();
+            reader.onload = function(){
+                const base64 = reader.result.split(',')[1];
+                const payload = JSON.stringify({
+                    action   : 'DOWNLOAD_FILE',
+                    fileName : fileName,
+                    content  : base64,
+                    mimeType : blob.type
+                });
+                try{
+                    window.AppInventor.setWebViewString(payload);
+                    if(typeof showFolderToast === 'function')
+                        showFolderToast('📤 Kodular App ko download request bheji gayi','#2563eb');
+                }catch(e){ console.error('Kodular bridge error:', e); }
+            };
+            reader.readAsDataURL(blob);
+            return false;
+        }
+
         try{
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -10308,7 +10316,7 @@ window.addEventListener('load', function(){
     }
 
     // ── Toast message ──
-    function showFolderToast(msg, bg='#2563eb'){
+    window.showFolderToast = function(msg, bg='#2563eb'){
         const badge = document.getElementById('fbSyncBadge');
         if(badge){
             badge.textContent = msg;
